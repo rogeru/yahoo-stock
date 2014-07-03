@@ -1,0 +1,70 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../polymer-jsonp/polymer-jsonp.html">
+<link rel="import" href="../polymer-media-query/polymer-media-query.html">
+
+<polymer-element name="yahoo-stock" attributes="symbol autoupdate responsiveWidth">
+  <template>
+    <link rel="stylesheet" href="yahoo-stock.css">
+    <div class="stock-label large">{{response.Name}}</div>
+    <div class="stock-label stock-desc">{{symbol}}</div>
+    <div class="stock-label large quote">
+      <span class="price">{{response.LastTradePriceOnly}}</span>
+      <span class="change {{change}}">{{response.Change}} ({{response.ChangeinPercent}})</span>
+    </div>
+    <div class="more">
+      <div class="chart">
+        <img src="http://chart.finance.yahoo.com/z?s={{symbol}}&amp;t=5d&amp;q=l&amp;l=on&amp;z=s&p=v" />
+      </div>
+      <div class="stock-label small details" hidden?="{{queryMatches}}">
+        <div><label>Open</label>{{response.Open}}</div>
+        <div><label>High</label>{{response.DaysHigh}}</div>
+        <div><label>Low</label>{{response.DaysLow}}</div>
+        <div><label>Volume</label>{{response.Volume}}</div>
+        <div><label>Avg Vol</label>{{response.AverageDailyVolume}}</div>
+        <div><label>Mkt Cap</label>{{response.MarketCapitalization}}</div>
+      </div>
+    </div>
+    <polymer-jsonp id="jsonp" response="{{jsonpResponse}}"></polymer-jsonp>
+    <polymer-media-query query="max-width: {{responsiveWidth}}" queryMatches="{{queryMatches}}"></polymer-media-query>
+  </template>
+  <script>
+    Polymer('yahoo-stock', {
+      symbol: '',
+      autoupdate: false,
+      responsiveWidth: '460px',
+      updateinterval: 60000,
+      jsonpResponse: null,
+      queryMatches: false,
+      ready: function() {
+        this.queryMatchesChanged()
+      },
+      go: function() {
+        this.$.jsonp.url = 'https://query.yahooapis.com/v1/public/yql?q=select%20%2A%20from%20yahoo.finance.quotes%20where%20symbol%20in%20%28"' + 
+          this.symbol + '"%29&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback=';
+        this.$.jsonp.go();
+      },
+      symbolChanged: function() {
+        if (this.symbol) {
+          this.go();
+        }
+      },
+      queryMatchesChanged: function() {
+        this.chartWidth = this.queryMatches ? 256 : 327; 
+      },
+      autoupdateChanged: function() {
+        if (this.autoupdate) {
+          this.intervalId = setInterval(this.go.bind(this), this.updateinterval);
+        } else if (this.intervalId) {
+          clearInterval(this.intervalId);
+        }
+      },
+      jsonpResponseChanged: function() {
+        var r = this.response = this.jsonpResponse && this.jsonpResponse.query.results.quote;
+        if (r) {
+          this.random = Math.random() * 10000;
+          this.change = Number(r.c) >= 0 ? 'up' : 'down';
+        }
+      }
+    });
+  </script>
+</polymer-element>
